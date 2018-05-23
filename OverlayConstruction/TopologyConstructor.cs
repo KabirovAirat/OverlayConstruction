@@ -69,6 +69,7 @@ namespace OverlayConstruction
                     }
                 }
             }
+            PostProcessingRandom(mixes);
             return mixes;
         }
 
@@ -107,9 +108,63 @@ namespace OverlayConstruction
                     }
                 }
             }
+            PostProcessingLatencyAware(mixes);
             return mixes;
         }
 
-        
+        private static void PostProcessingRandom(IEnumerable<Mix> mixes)
+        {
+            var optimalDegree = 2 * Math.Log(mixes.Count(), 2);
+            Random rand = new Random(DateTime.Now.Millisecond);
+            var mixesHavingLessNeighbors = mixes.Where(m => m.NeighborsWithLatencies.Count < optimalDegree).OrderBy(m => rand.Next()).ToList();
+            var overallNeighborsCount = mixes.Sum(m => m.NeighborsWithLatencies.Count);
+            bool stopCondition = false;
+            while(mixesHavingLessNeighbors.Count > 1 && !stopCondition)
+            {
+                foreach(var mix in mixesHavingLessNeighbors)
+                {
+                    if (mix.NeighborsWithLatencies.Count == optimalDegree) continue;
+                    var neighborMix = mixesHavingLessNeighbors.FirstOrDefault(m => m.Id != mix.Id 
+                    && !mix.NeighborsWithLatencies.ContainsKey(m.Id) 
+                    && m.NeighborsWithLatencies.Count < optimalDegree);
+                    if (neighborMix == null) continue;
+                    mix.NeighborsWithLatencies.Add(neighborMix.Id, mix.UnderlayNodesWithLatencies[neighborMix.Id]);
+                    neighborMix.NeighborsWithLatencies.Add(mix.Id, neighborMix.UnderlayNodesWithLatencies[mix.Id]);
+                }
+                mixesHavingLessNeighbors = mixes.Where(m => m.NeighborsWithLatencies.Count < optimalDegree).OrderBy(m => rand.Next()).ToList();
+                if (overallNeighborsCount < mixes.Sum(m => m.NeighborsWithLatencies.Count))
+                    overallNeighborsCount = mixes.Sum(m => m.NeighborsWithLatencies.Count);
+                else
+                    stopCondition = true;
+            }
+        }
+
+        private static void PostProcessingLatencyAware(IEnumerable<Mix> mixes)
+        {
+            var optimalDegree = 2 * Math.Log(mixes.Count(), 2);
+            var mixesHavingLessNeighbors = mixes.Where(m => m.NeighborsWithLatencies.Count < optimalDegree).ToList();
+            var overallNeighborsCount = mixes.Sum(m => m.NeighborsWithLatencies.Count);
+            bool stopCondition = false;
+            while (mixesHavingLessNeighbors.Count > 1 && !stopCondition)
+            {
+                foreach (var mix in mixesHavingLessNeighbors)
+                {
+                    if (mix.NeighborsWithLatencies.Count == optimalDegree) continue;
+                    var neighborMix = mixesHavingLessNeighbors.OrderBy(m => mix.UnderlayNodesWithLatencies[m.Id])
+                        .FirstOrDefault(m => m.Id != mix.Id
+                    && !mix.NeighborsWithLatencies.ContainsKey(m.Id)
+                    && m.NeighborsWithLatencies.Count < optimalDegree);
+                    if (neighborMix == null) continue;
+                    mix.NeighborsWithLatencies.Add(neighborMix.Id, mix.UnderlayNodesWithLatencies[neighborMix.Id]);
+                    neighborMix.NeighborsWithLatencies.Add(mix.Id, neighborMix.UnderlayNodesWithLatencies[mix.Id]);
+                }
+                mixesHavingLessNeighbors = mixes.Where(m => m.NeighborsWithLatencies.Count < optimalDegree).ToList();
+                if (overallNeighborsCount < mixes.Sum(m => m.NeighborsWithLatencies.Count))
+                    overallNeighborsCount = mixes.Sum(m => m.NeighborsWithLatencies.Count);
+                else
+                    stopCondition = true;
+            }
+        }
+
     }
 }
