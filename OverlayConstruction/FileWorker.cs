@@ -38,10 +38,13 @@ namespace OverlayConstruction
             List<string> topologyResult = new List<string>();
             foreach (var mix in mixes)
             {
-                var capacityTowardOneNeighbor = (double)mix.BandwidthCapacity / mix.NeighborsWithLatencies.Count;
                 foreach (var neigbor in mix.NeighborsWithLatencies.Where(n => n.Key > mix.Id))
                 {
-                    var resultString = mix.Id.ToString() + "\t" +neigbor.Key.ToString() + "\t" + neigbor.Value.ToString() + "\t" + capacityTowardOneNeighbor.ToString();
+                    var neighborMix = mixes.First(n => n.Id == neigbor.Key);
+                    var thisMixCapacityTowardThisLink = (double)mix.BandwidthCapacity / mix.NeighborsWithLatencies.Count;
+                    var neighborCapacityTowardThisLink = (double)neighborMix.BandwidthCapacity / neighborMix.NeighborsWithLatencies.Count;
+                    var resultLinkCapacity = thisMixCapacityTowardThisLink < neighborCapacityTowardThisLink ? thisMixCapacityTowardThisLink : neighborCapacityTowardThisLink;
+                    var resultString = mix.Id.ToString() + "\t" +neigbor.Key.ToString() + "\t" + neigbor.Value.ToString() + "\t" + resultLinkCapacity.ToString();
                     topologyResult.Add(resultString);
                 }
             }
@@ -86,7 +89,7 @@ namespace OverlayConstruction
             List<string> pathsResult = new List<string>();
             foreach (var mix in mixes)
             {
-                foreach (var path in mix.Paths.Where(path => path.RendezvousMix >= mix.Id))
+                foreach (var path in mix.Paths)
                 {
                     var secondRelay = path.SecondMiddleRelay.HasValue ? path.SecondMiddleRelay.ToString() + "\t" : "";
                     var resultString = mix.Id.ToString() + "\t" + path.RendezvousMix.ToString() + 

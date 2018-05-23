@@ -31,21 +31,23 @@ namespace OverlayConstruction
                         }
                     }
 
-                    // Get 2 relay paths from entry mix
-                    foreach(var firstRelay in mix.NeighborsWithLatencies)
+                    // Get 2 relay paths from entry mix if no 1 relay paths found or entry = rendezvous
+                    if (!paths.Any())
                     {
-                        var twoHopRelays = GetMiddleRelaysForTwoNodes(mixes, firstRelay.Key, rendezvous);
-                        foreach (var secondRelay in twoHopRelays)
+                        foreach (var firstRelay in mix.NeighborsWithLatencies)
                         {
-                            Path path = new Path();
-                            path.RendezvousMix = rendezvous;
-                            path.FirstMiddleRelay = firstRelay.Key;
-                            path.SecondMiddleRelay = secondRelay;
-                            path.Latency = firstRelay.Value + mixes.First(m => m.Id == firstRelay.Key).NeighborsWithLatencies[secondRelay] + mixes.First(m => m.Id == rendezvous).NeighborsWithLatencies[secondRelay];
-                            paths.Add(path);
+                            var twoHopRelays = GetMiddleRelaysForTwoNodes(mixes, firstRelay.Key, rendezvous);
+                            foreach (var secondRelay in twoHopRelays)
+                            {
+                                Path path = new Path();
+                                path.RendezvousMix = rendezvous;
+                                path.FirstMiddleRelay = firstRelay.Key;
+                                path.SecondMiddleRelay = secondRelay;
+                                path.Latency = firstRelay.Value + mixes.First(m => m.Id == firstRelay.Key).NeighborsWithLatencies[secondRelay] + mixes.First(m => m.Id == rendezvous).NeighborsWithLatencies[secondRelay];
+                                paths.Add(path);
+                            }
                         }
                     }
-
                     // Get rid of cycles (case entry = rendezvous is allowed, 2 middle relays are required in such case)
                     HashSet<Guid> pathsWithCycles = new HashSet<Guid>();
                     foreach (var path in paths)
@@ -57,25 +59,28 @@ namespace OverlayConstruction
                         || path.FirstMiddleRelay == mix.Id)
                             pathsWithCycles.Add(path.Id);
                     }
-                    mix.Paths.AddRange(paths.Where(p => !pathsWithCycles.Contains(p.Id)).ToList());
+
+                    paths = paths.Where(p => !pathsWithCycles.Contains(p.Id)).ToList();
 
                     if (PathSelectionStrategy == "Random")
                     {
-                        foreach(var path in mix.Paths.Where(p => p.RendezvousMix == rendezvous))
+                        foreach(var path in paths)
                         {
-                            path.Probability = 1.0 / mix.Paths.Count(p => p.RendezvousMix == rendezvous);
+                            path.Probability = 1.0 / paths.Count();
                         }
                     }
                     else if (PathSelectionStrategy == "Latency-aware")
                     {
-                        foreach (var path in mix.Paths.Where(p => p.RendezvousMix == rendezvous))
+                        foreach (var path in paths)
                         {
                             path.Probability = path.Latency < 150000 ?
-                                1.0 / mix.Paths.Count(p => p.RendezvousMix == rendezvous && p.Latency < 150000) : 0;
+                                1.0 / paths.Count(p => p.Latency < 150000) : 0;
                         }
                     }
                     else
                         throw new Exception("Path selection strategy should be specified");
+
+                    mix.Paths.AddRange(paths.Where(p => p.Probability > 0).ToList());
 
                 }
 
