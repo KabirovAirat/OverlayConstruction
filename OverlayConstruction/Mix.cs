@@ -17,6 +17,8 @@ namespace OverlayConstruction
         public int BandwidthCapacity { get; set; } = 420;
 
         public List<Path> Paths { get; set; }
+
+        public bool isMaxNodeDegreeReached { get; set; } = false;
     }
 
     public class UnderlayTopologyItem

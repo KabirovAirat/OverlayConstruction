@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Configuration;
+using System.Globalization;
 
 namespace OverlayConstruction
 {
@@ -44,7 +45,7 @@ namespace OverlayConstruction
                     var thisMixCapacityTowardThisLink = (double)mix.BandwidthCapacity / mix.NeighborsWithLatencies.Count;
                     var neighborCapacityTowardThisLink = (double)neighborMix.BandwidthCapacity / neighborMix.NeighborsWithLatencies.Count;
                     var resultLinkCapacity = thisMixCapacityTowardThisLink < neighborCapacityTowardThisLink ? thisMixCapacityTowardThisLink : neighborCapacityTowardThisLink;
-                    var resultString = mix.Id.ToString() + "\t" +neigbor.Key.ToString() + "\t" + neigbor.Value.ToString() + "\t" + resultLinkCapacity.ToString();
+                    var resultString = mix.Id.ToString() + "\t" +neigbor.Key.ToString() + "\t" + ((double)neigbor.Value / 1000).ToString(new CultureInfo("en-US")) + "\t" + resultLinkCapacity.ToString(new CultureInfo("en-US"));
                     topologyResult.Add(resultString);
                 }
             }
@@ -60,7 +61,7 @@ namespace OverlayConstruction
             foreach (var mix in mixes)
             {
                 var probabilityOfBeingEntry = 1.0 / mixes.Count();
-                var resultString = mix.Id.ToString() + "\t" + probabilityOfBeingEntry.ToString() + "\t" + mix.BandwidthCapacity.ToString();
+                var resultString = mix.Id.ToString() + "\t" + probabilityOfBeingEntry.ToString(new CultureInfo("en-US")) + "\t" + mix.BandwidthCapacity.ToString(new CultureInfo("en-US"));
                 entriesResult.Add(resultString);
             }
 
@@ -75,7 +76,7 @@ namespace OverlayConstruction
             foreach (var mix in mixes)
             {
                 var probabilityOfBeingRendezvous = 1.0 / mixes.Count();
-                var resultString = mix.Id.ToString() + "\t" + probabilityOfBeingRendezvous.ToString();
+                var resultString = mix.Id.ToString() + "\t" + probabilityOfBeingRendezvous.ToString(new CultureInfo("en-US"));
                 rendezvousResult.Add(resultString);
             }
 
@@ -93,7 +94,7 @@ namespace OverlayConstruction
                 {
                     var secondRelay = path.SecondMiddleRelay.HasValue ? path.SecondMiddleRelay.ToString() + "\t" : "";
                     var resultString = mix.Id.ToString() + "\t" + path.RendezvousMix.ToString() + 
-                         "\t" + path.FirstMiddleRelay.ToString() + "\t" + secondRelay + path.Probability.ToString();
+                         "\t" + path.FirstMiddleRelay.ToString() + "\t" + secondRelay + path.Probability.ToString(new CultureInfo("en-US"));
                     pathsResult.Add(resultString);
                 }
             }
@@ -107,7 +108,7 @@ namespace OverlayConstruction
         public static IEnumerable<string> GetDataFileNames()
         {
             List<string> fileNames = new List<string>();
-            fileNames = Directory.GetFiles(DataPath, "*edges.dat", SearchOption.AllDirectories).ToList();
+            fileNames = Directory.GetFiles(DataPath, "*edges.dat", SearchOption.AllDirectories).Where(f => !f.Contains("qqcap")).ToList();
             return fileNames;
         }
     }

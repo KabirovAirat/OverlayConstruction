@@ -49,15 +49,16 @@ namespace OverlayConstruction
         private static IEnumerable<Mix> CreateRandomTopology(IEnumerable<UnderlayTopologyItem> dataset)
         {
             var mixes = InitializeMixes(dataset);
-
+            var maxNodeDegree = 2 * Math.Log(mixes.Count(), 2);
             foreach(var mix in mixes)
             {
+                if (mix.isMaxNodeDegreeReached) continue;
                 Random rand = new Random(DateTime.Now.Millisecond);
                 HashSet<int> chosenNeighbors = new HashSet<int>();
                 for (int i = 0;i < InitiallyChosenNeighborsCount;i++)
                 {
                     int neighbor = rand.Next(0, mixes.Count());
-                    while (neighbor == mix.Id || chosenNeighbors.Contains(neighbor))
+                    while (neighbor == mix.Id || chosenNeighbors.Contains(neighbor) || mixes.First(m => m.Id == neighbor).isMaxNodeDegreeReached)
                         neighbor = rand.Next(0, mixes.Count());
                     chosenNeighbors.Add(neighbor);
                     if(!mix.NeighborsWithLatencies.ContainsKey(neighbor))
@@ -65,7 +66,15 @@ namespace OverlayConstruction
                         mix.NeighborsWithLatencies.Add(neighbor, mix.UnderlayNodesWithLatencies[neighbor]);
                         var neighborMix = mixes.First(m => m.Id == neighbor);
                         if (!neighborMix.NeighborsWithLatencies.ContainsKey(mix.Id))
+                        {
                             neighborMix.NeighborsWithLatencies.Add(mix.Id, neighborMix.UnderlayNodesWithLatencies[mix.Id]);
+                            if (neighborMix.NeighborsWithLatencies.Count >= maxNodeDegree) neighborMix.isMaxNodeDegreeReached = true;
+                        }
+                        if(mix.NeighborsWithLatencies.Count() >= maxNodeDegree)
+                        {
+                            mix.isMaxNodeDegreeReached = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -76,27 +85,37 @@ namespace OverlayConstruction
         private static IEnumerable<Mix> CreateLatencyAwareTopology(IEnumerable<UnderlayTopologyItem> dataset)
         {
             var mixes = InitializeMixes(dataset);
-
+            var maxNodeDegree = 2 * Math.Log(mixes.Count(), 2);
             foreach (var mix in mixes)
             {
-                var latencyAwareNeighbors = mix.UnderlayNodesWithLatencies.Where(n => n.Key != mix.Id).OrderBy(pair => pair.Value).Take(LatencyAwareChosenNeighborsCount).ToList();
-                foreach(var neighbor in latencyAwareNeighbors)
+                if (mix.isMaxNodeDegreeReached) continue;
+                var sortedMixes = mixes.Where(m => m.Id != mix.Id && !m.isMaxNodeDegreeReached).OrderBy(m => mix.UnderlayNodesWithLatencies[m.Id]).ToList();
+                HashSet<int> chosenNeighbors = new HashSet<int>();
+                foreach (var neighborMix in sortedMixes)
                 {
-                    if (!mix.NeighborsWithLatencies.ContainsKey(neighbor.Key))
+                    if (chosenNeighbors.Count == LatencyAwareChosenNeighborsCount) break;
+                    if (!mix.NeighborsWithLatencies.ContainsKey(neighborMix.Id))
                     {
-                        mix.NeighborsWithLatencies.Add(neighbor.Key, neighbor.Value);
-                        var neighborMix = mixes.First(m => m.Id == neighbor.Key);
+                        mix.NeighborsWithLatencies.Add(neighborMix.Id, mix.UnderlayNodesWithLatencies[neighborMix.Id]);
                         if (!neighborMix.NeighborsWithLatencies.ContainsKey(mix.Id))
+                        {
+                            chosenNeighbors.Add(neighborMix.Id);
                             neighborMix.NeighborsWithLatencies.Add(mix.Id, neighborMix.UnderlayNodesWithLatencies[mix.Id]);
+                            if (neighborMix.NeighborsWithLatencies.Count >= maxNodeDegree) neighborMix.isMaxNodeDegreeReached = true;
+                        }
+                        if (mix.NeighborsWithLatencies.Count >= maxNodeDegree)
+                        {
+                            mix.isMaxNodeDegreeReached = true;
+                            break;
+                        }
                     }
                 }
-
+                if (mix.isMaxNodeDegreeReached) continue;
                 Random rand = new Random(DateTime.Now.Millisecond);
-                HashSet<int> chosenNeighbors = new HashSet<int>(latencyAwareNeighbors.Select(n => n.Key));
-                for (int i = 0; i < InitiallyChosenNeighborsCount - LatencyAwareChosenNeighborsCount; i++)
+                for (int i = 0; i < InitiallyChosenNeighborsCount - chosenNeighbors.Count; i++)
                 {
                     int neighbor = rand.Next(0, mixes.Count());
-                    while (neighbor == mix.Id || chosenNeighbors.Contains(neighbor))
+                    while (neighbor == mix.Id || chosenNeighbors.Contains(neighbor) || mixes.First(m => m.Id == neighbor).isMaxNodeDegreeReached)
                         neighbor = rand.Next(0, mixes.Count());
                     chosenNeighbors.Add(neighbor);
                     if (!mix.NeighborsWithLatencies.ContainsKey(neighbor))
@@ -104,7 +123,15 @@ namespace OverlayConstruction
                         mix.NeighborsWithLatencies.Add(neighbor, mix.UnderlayNodesWithLatencies[neighbor]);
                         var neighborMix = mixes.First(m => m.Id == neighbor);
                         if (!neighborMix.NeighborsWithLatencies.ContainsKey(mix.Id))
+                        {
                             neighborMix.NeighborsWithLatencies.Add(mix.Id, neighborMix.UnderlayNodesWithLatencies[mix.Id]);
+                            if (neighborMix.NeighborsWithLatencies.Count >= maxNodeDegree) neighborMix.isMaxNodeDegreeReached = true;
+                        }
+                        if (mix.NeighborsWithLatencies.Count() >= maxNodeDegree)
+                        {
+                            mix.isMaxNodeDegreeReached = true;
+                            break;
+                        }
                     }
                 }
             }
