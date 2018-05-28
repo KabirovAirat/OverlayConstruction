@@ -19,6 +19,8 @@ namespace OverlayConstruction
         public List<Path> Paths { get; set; }
 
         public bool isMaxNodeDegreeReached { get; set; } = false;
+
+        public bool isLatencyAwareDegreeReached { get; set; } = false;
     }
 
     public class UnderlayTopologyItem

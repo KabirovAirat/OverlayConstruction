@@ -19,8 +19,14 @@ namespace OverlayConstruction
                 var mixes = TopologyConstructor.CreateTopology(dataset);
                 PathCalculator.CalculatePaths(mixes);
                 FileWorker.WriteResults(mixes, file.Substring(file.LastIndexOf("\\")));
+                Console.WriteLine($@"Max node degree {mixes.Max(m => m.NeighborsWithLatencies.Count)}");
+                Console.WriteLine($@"Average node degree {mixes.Average(m => m.NeighborsWithLatencies.Count)}");
+                Console.WriteLine($@"Min node degree {mixes.Min(m => m.NeighborsWithLatencies.Count)}");
+                Console.WriteLine($@"Total links {mixes.Sum(m => m.NeighborsWithLatencies.Count)}");
+
                 Console.WriteLine($@"{i} files already processed");
             }
+            Console.ReadLine();
         }
     }
 }
